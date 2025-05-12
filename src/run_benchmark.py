@@ -30,7 +30,6 @@ DEFAULT_PROMPTS = [
 
 # Service endpoints
 OLLAMA_API = "http://ollama:11434/api/generate"
-VLLM_API = "http://vllm:8000/generate"
 
 def setup_args():
     parser = argparse.ArgumentParser(description="LLM Benchmark")
@@ -110,88 +109,25 @@ def run_ollama_inference(model, prompt, max_tokens):
             "time_ms": (time.time() - start_time) * 1000
         }
 
-def run_vllm_inference(model, prompt, max_tokens):
-    """Run inference using vLLM API"""
-    start_time = time.time()
-    
-    try:
-        metrics.record_request(model, "vllm")
-        
-        payload = {
-            "prompt": prompt,
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "max_tokens": max_tokens
-        }
-        
-        response = requests.post(VLLM_API, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        
-        # Extract metrics
-        end_time = time.time()
-        elapsed_time_ms = (end_time - start_time) * 1000
-        
-        # Use metrics from vLLM response if available
-        if "metrics" in result:
-            input_tokens = result["metrics"].get("input_tokens", 0)
-            output_tokens = result["metrics"].get("output_tokens", 0)
-            # Use the more accurate vLLM timing if available
-            if "time_ms" in result["metrics"]:
-                elapsed_time_ms = result["metrics"]["time_ms"]
-        else:
-            # Fallback to rough estimation
-            input_tokens = len(prompt.split())
-            output_tokens = len(result.get("text", "").split())
-        
-        metrics.record_response_time(model, "vllm", elapsed_time_ms)
-        metrics.record_tokens(model, "vllm", input_tokens, output_tokens, elapsed_time_ms)
-        
-        return {
-            "model": model,
-            "service": "vllm",
-            "time_ms": elapsed_time_ms,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "text": result.get("text", "")
-        }
-    
-    except Exception as e:
-        metrics.record_request(model, "vllm", "error")
-        return {
-            "model": model,
-            "service": "vllm",
-            "error": str(e),
-            "time_ms": (time.time() - start_time) * 1000
-        }
-
 def run_single_benchmark(model, prompt, max_tokens):
-    """Run benchmark for both services on a single prompt"""
-    results = []
-    
+    """Run benchmark for Ollama on a single prompt"""
     # Run with Ollama
     ollama_result = run_ollama_inference(model, prompt, max_tokens)
     ollama_result["prompt"] = prompt
-    results.append(ollama_result)
     
-    # Run with vLLM
-    vllm_result = run_vllm_inference(model, prompt, max_tokens)
-    vllm_result["prompt"] = prompt
-    results.append(vllm_result)
-    
-    return results
+    return [ollama_result]
 
 def generate_plots(df, output_dir):
-    """Generate comparison plots between Ollama and vLLM"""
+    """Generate comparison plots for Ollama performance"""
     os.makedirs(output_dir, exist_ok=True)
     
     # Set the style
     sns.set(style="whitegrid")
     
-    # 1. Response Time Comparison
+    # 1. Response Time Comparison by Model
     plt.figure(figsize=(10, 6))
-    ax = sns.barplot(x="model", y="time_ms", hue="service", data=df)
-    ax.set_title("Response Time Comparison (lower is better)")
+    ax = sns.barplot(x="model", y="time_ms", data=df)
+    ax.set_title("Response Time by Model")
     ax.set_ylabel("Time (ms)")
     ax.set_xlabel("Model")
     plt.tight_layout()
@@ -201,8 +137,8 @@ def generate_plots(df, output_dir):
     # 2. Tokens per Second Comparison
     df['tokens_per_second'] = df['output_tokens'] / (df['time_ms'] / 1000)
     plt.figure(figsize=(10, 6))
-    ax = sns.barplot(x="model", y="tokens_per_second", hue="service", data=df)
-    ax.set_title("Tokens per Second Comparison (higher is better)")
+    ax = sns.barplot(x="model", y="tokens_per_second", data=df)
+    ax.set_title("Tokens per Second by Model")
     ax.set_ylabel("Tokens/s")
     ax.set_xlabel("Model")
     plt.tight_layout()
@@ -211,7 +147,7 @@ def generate_plots(df, output_dir):
     
     # 3. Box plot of response times
     plt.figure(figsize=(12, 6))
-    ax = sns.boxplot(x="model", y="time_ms", hue="service", data=df)
+    ax = sns.boxplot(x="model", y="time_ms", data=df)
     ax.set_title("Response Time Distribution")
     ax.set_ylabel("Time (ms)")
     ax.set_xlabel("Model")
@@ -220,7 +156,7 @@ def generate_plots(df, output_dir):
     plt.close()
     
     # 4. Create summary table
-    summary = df.groupby(['model', 'service']).agg({
+    summary = df.groupby(['model']).agg({
         'time_ms': ['mean', 'min', 'max', 'std'],
         'tokens_per_second': ['mean', 'min', 'max', 'std']
     }).reset_index()

@@ -1,6 +1,6 @@
-# Ollama vs vLLM Benchmarking
+# Ollama Benchmarking
 
-This project provides a comprehensive benchmarking environment for comparing the performance of language models using Ollama and vLLM. It includes hardware monitoring and visualization tools to help you understand the performance characteristics of each framework.
+This project provides a comprehensive benchmarking environment for measuring the performance of language models using Ollama. It includes hardware monitoring and visualization tools to help you understand the performance characteristics of different models.
 
 ## 🚀 Features
 
@@ -15,7 +15,7 @@ This project provides a comprehensive benchmarking environment for comparing the
 ## 📋 Requirements
 
 - Docker and Docker Compose
-- CUDA-compatible GPU (optional but recommended)
+- No GPU required - runs completely on CPU
 - At least 8GB of RAM
 - 10GB+ of free disk space (depends on model size)
 

@@ -9,13 +9,20 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     build-essential \
     ninja-build \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch and CUDA
-RUN pip3 install --no-cache-dir torch torchvision torchaudio
+# Upgrade pip
+RUN pip3 install --upgrade pip setuptools wheel
 
-# Install vLLM
-RUN pip3 install --no-cache-dir vllm
+# Install PyTorch with CUDA
+RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Install numpy first (dependency issue workaround)
+RUN pip3 install --no-cache-dir numpy
+
+# Install vLLM using a specific version known to work
+RUN pip3 install --no-cache-dir "vllm==0.2.1"
 
 # Install additional dependencies
 RUN pip3 install --no-cache-dir \

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Script to setup the models for both Ollama and vLLM
+# Script to setup the models for Ollama
 
 # Create data directories
-mkdir -p data/ollama data/models
+mkdir -p data/ollama
 
 # Setup Ollama model
 echo "Setting up Ollama model..."

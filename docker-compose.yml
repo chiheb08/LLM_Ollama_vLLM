@@ -9,13 +9,6 @@ services:
       - "11434:11434"
     volumes:
       - ./data/ollama:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
 
   # Ollama WebUI
@@ -28,25 +21,6 @@ services:
       - OLLAMA_API_BASE_URL=http://ollama:11434/api
     depends_on:
       - ollama
-    restart: unless-stopped
-
-  # vLLM service
-  vllm:
-    build:
-      context: .
-      dockerfile: ./config/vllm.Dockerfile
-    container_name: vllm
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data/models:/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
 
   # Prometheus for monitoring
@@ -112,7 +86,6 @@ services:
       - ./results:/app/results
     depends_on:
       - ollama
-      - vllm
       - node-exporter
     command: ["/bin/bash", "-c", "sleep infinity"]
 

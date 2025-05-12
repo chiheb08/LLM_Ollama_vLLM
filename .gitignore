@@ -1,0 +1,29 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Docker data
+data/
+
+# Benchmark results
+results/
+
+# Jupyter notebooks
+.ipynb_checkpoints
+
+# Logs
+*.log
+logs/ 

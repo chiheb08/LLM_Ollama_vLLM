@@ -1,229 +1,295 @@
-# Ollama Benchmarking
+# LLM Benchmarking Platform: Ollama vs. vLLM
 
-This project provides a comprehensive benchmarking environment for measuring the performance of language models using Ollama. It includes hardware monitoring and visualization tools to help you understand the performance characteristics of different models.
+A Docker-based platform for benchmarking and monitoring LLM inference engines (Ollama and vLLM) with real-time visualization. Designed to provide detailed performance comparisons between different inference engines, models, and configurations.
 
-## 🚀 Features
+![Benchmarking Dashboard](https://raw.githubusercontent.com/username/llm-benchmarking-platform/main/docs/images/dashboard_preview.png)
 
-- **Complete Docker Environment**: All components run in Docker containers for easy setup and deployment
-- **Performance Comparison**: Compare inference performance between Ollama and vLLM using the same models
-- **Hardware Monitoring**: Track CPU, memory, and GPU usage during inference
-- **Visualization Dashboard**: Grafana dashboard for real-time performance monitoring
-- **Metrics Collection**: Prometheus integration for time-series metrics collection
-- **Detailed Reports**: Generate CSV reports and visual plots comparing performance metrics
-- **User-Friendly Interface**: Ollama WebUI for interactive testing
+## Features
 
-## 📋 Requirements
+- 🚀 Benchmark multiple LLM models across different inference engines (Ollama and vLLM)
+- 📊 Real-time visualization of performance metrics with Grafana dashboards
+- 🔍 Comprehensive hardware monitoring (CPU, memory, GPU) for resource utilization analysis
+- 📈 Automated metric collection, persistence, and visualization
+- 🔄 Support for concurrent inference requests to simulate load testing
+- 🖥️ Cross-platform support with CPU-only mode for Mac/non-NVIDIA systems
+- 📱 Ollama WebUI for interactive testing and model management
+- 📁 Persistent model storage and benchmark results
+
+## Architecture
+
+The platform uses a modular, containerized architecture:
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Benchmark     │     │     Ollama      │     │      vLLM       │
+│   Container     │────>│    Container    │     │    Container    │
+│                 │     │                 │     │                 │
+└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Prometheus    │     │  Node Exporter  │     │  DCGM Exporter  │
+│                 │<────│                 │     │  (GPU metrics)  │
+│                 │     │                 │     │                 │
+└────────┬────────┘     └─────────────────┘     └─────────────────┘
+         │
+         │
+         ▼
+┌─────────────────┐
+│     Grafana     │
+│    Dashboards   │
+│                 │
+└─────────────────┘
+```
+
+## Comparison: Ollama vs. vLLM
+
+| Feature               | Ollama                  | vLLM                        |
+|-----------------------|-------------------------|------------------------------|
+| **Implementation**    | C++ & Rust              | Python & CUDA               |
+| **Key Technology**    | GGML/GGUF Quantization  | PagedAttention              |
+| **Primary Focus**     | Ease of use, low memory | High throughput, GPU scaling|
+| **Best For**          | Personal use, CPU systems| Production, GPU systems    |
+| **Quantization**      | Built-in                | Optional                    |
+| **Typical Performance**| 20-30 tokens/sec       | 50-100+ tokens/sec          |
+| **Memory Usage**      | Lower                   | Higher                      |
+| **GPU Utilization**   | Moderate               | High                         |
+| **API Compatibility** | Custom API              | OpenAI API compatible       |
+
+## Components
+
+- **Ollama**: Fast, local LLM inference engine with built-in model management
+- **vLLM**: High-performance LLM inference with PagedAttention (GPU accelerated)
+- **Prometheus**: Time-series metrics collection for performance data
+- **Grafana**: Dashboard visualization with custom panels for LLM metrics
+- **Node Exporter**: Hardware metrics collection for system resources
+- **DCGM Exporter**: NVIDIA GPU metrics collection for GPU utilization
+- **Benchmark Tool**: Python-based benchmarking with customizable parameters
+
+## Requirements
 
 - Docker and Docker Compose
-- No GPU required - runs completely on CPU
-- At least 8GB of RAM
-- 10GB+ of free disk space (depends on model size)
+- 8GB+ RAM for basic models (16GB+ recommended)
+- For vLLM: NVIDIA GPU with CUDA support (at least 8GB VRAM)
+- For Ollama: Works on CPU, but GPU recommended for larger models
+- macOS, Linux, or Windows with WSL2 (Windows native Docker has limited GPU support)
 
-## 🔧 Installation & Setup
+## Quick Start
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/chiheb08/LLM_Ollama_vLLM
-   cd ollama-vllm-comparison
-   ```
+### CPU-Only Mode (Recommended for Mac/non-NVIDIA systems)
 
-2. Start the Docker environment:
-   ```bash
-   docker-compose up -d
-   ```
-
-3. Setup the models:
-   ```bash
-   ./scripts/setup_models.sh
-   ```
-
-## 📊 Running Benchmarks
-
-To run a benchmark comparing Ollama and vLLM:
+For testing with Ollama on systems without NVIDIA GPUs (e.g., Macs with Apple Silicon):
 
 ```bash
-./scripts/run_benchmark.sh
+# Clone this repository
+git clone https://github.com/chiheb08/LLM_Ollama_vLLM.git
+cd LLM_Ollama_vLLM
+
+# Start the platform in CPU-only mode
+docker-compose -f docker-compose.cpu.yml up -d
+
+# Download a model to test with
+docker exec -it ollama ollama pull tinyllama
+
+# Run a benchmark against Ollama
+docker exec -it benchmark python /app/src/run_benchmark.py --models tinyllama --iterations 3 --plot
 ```
 
-This will:
-1. Run inference across a set of prompts using both Ollama and vLLM
-2. Collect performance metrics (response time, tokens per second, etc.)
-3. Generate comparison charts and tables
-4. Save results to the `results` directory
+### GPU Mode with Both Ollama and vLLM
 
-### Customizing Benchmarks
-
-You can customize the benchmark by modifying the script parameters:
+If you have an NVIDIA GPU with CUDA support:
 
 ```bash
-docker exec -it benchmark python /app/src/run_benchmark.py \
-  --models llama2 mistral tinyllama \
-  --iterations 5 \
-  --concurrent 3 \
-  --max-tokens 1024 \
-  --plot
+# Clone this repository
+git clone https://github.com/chiheb08/LLM_Ollama_vLLM.git
+cd LLM_Ollama_vLLM
+
+# Start the platform with GPU services
+docker-compose up -d
+
+# Or to specifically include vLLM:
+docker-compose --profile gpu up -d
+
+# Download a model to test with
+docker exec -it ollama ollama pull tinyllama
+
+# Run a benchmark against both Ollama and vLLM
+docker exec -it benchmark python /app/src/run_benchmark.py --models tinyllama --engines ollama vllm --iterations 3 --plot
 ```
 
-Available parameters:
-- `--models`: Space-separated list of models to benchmark
-- `--iterations`: Number of runs for each prompt
-- `--concurrent`: Number of concurrent requests
-- `--max-tokens`: Maximum tokens to generate
-- `--plot`: Generate visualization plots
-- `--prompts-file`: Custom JSON file with prompts
-- `--output-dir`: Directory to save results
+### Accessing Dashboards
 
-## 📈 Monitoring
-
-Access the monitoring dashboards:
-
-- **Grafana**: http://localhost:3001 (Username: admin, Password: password)
+- **Grafana**: http://localhost:3001 (admin/password)
 - **Prometheus**: http://localhost:9090
 - **Ollama WebUI**: http://localhost:3000
 
-### Key Metrics Collected
+## Benchmark Options
 
-The benchmarking system collects the following metrics:
-- **Response Time**: Total time to generate a response (ms)
-- **Tokens per Second**: Generation speed
-- **Memory Usage**: RAM consumption during inference
-- **CPU/GPU Usage**: Processor load during inference
-- **Total Tokens**: Input and output token counts
+```
+usage: run_benchmark.py [-h] [--models MODELS [MODELS ...]] [--engines ENGINES [ENGINES ...]]
+                        [--iterations ITERATIONS] [--concurrent CONCURRENT]
+                        [--max-tokens MAX_TOKENS] [--plot]
 
-### Real-time Monitoring Architecture
+arguments:
+  --models MODELS [MODELS ...]     Models to benchmark (default: ["tinyllama"])
+  --engines ENGINES [ENGINES ...]  Inference engines to benchmark (ollama, vllm)
+  --iterations ITERATIONS          Number of iterations per model (default: 5)
+  --concurrent CONCURRENT          Number of concurrent requests (default: 1)
+  --max-tokens MAX_TOKENS          Maximum tokens to generate (default: 100)
+  --plot                          Generate plots of the results
+```
 
-The metrics collection works as follows:
-1. The `prometheus_metrics.py` module runs inside the benchmark container on port 8080
-2. During benchmark runs, it records metrics about response times and token generation
-3. Prometheus scrapes these metrics from the benchmark container
-4. Grafana visualizes the data from Prometheus in dashboards
-5. Node Exporter provides system-level metrics about CPU, memory, and GPU usage
+## Benchmarking Methodology
 
-## 🔍 Understanding vLLM
+The benchmark process:
 
-[vLLM](https://github.com/vllm-project/vllm) is an open-source library for LLM inference that introduces several optimizations:
+1. Selects a set of representative prompts from various domains
+2. Measures key performance metrics:
+   - Response time (ms)
+   - Tokens per second (throughput)
+   - First token latency
+   - Memory usage during inference
+   - GPU utilization (when applicable)
+3. Runs multiple iterations to account for variance
+4. Supports concurrent requests to simulate real-world load
+5. Generates statistical analysis (mean, min, max, standard deviation)
+6. Creates visualizations for comparative analysis
+
+## Dashboard Features
+
+The platform provides multiple dashboards:
+
+1. **Home Dashboard**: Overview and navigation hub
+   - Summary of total requests processed
+   - Links to engine-specific dashboards
+   - Quick stats on system health
+
+2. **Ollama Dashboard**: Detailed metrics for Ollama performance
+   - Response time tracking
+   - Tokens/second performance
+   - Request volume
+   - Token generation metrics
+   - System resource utilization
+
+3. **vLLM Dashboard**: GPU-accelerated performance metrics
+   - GPU utilization and memory consumption
+   - Temperature and power monitoring
+   - Response time tracking
+   - Throughput metrics
+   - Detailed token statistics
+
+## Results and Analysis
+
+Benchmark results are saved to the `results/` directory:
+- CSV files with detailed metrics for further analysis
+- PNG plots showing performance comparisons between engines and models
+- Real-time metrics in Grafana dashboards for ongoing monitoring
+
+### Sample Findings
+
+When comparing Ollama and vLLM on the same model (e.g., TinyLlama):
+
+- **Response Time**: vLLM typically shows 30-50% lower latency, especially with GPU acceleration
+- **Throughput**: vLLM processes 2-3x more tokens per second on equivalent hardware
+- **Memory Usage**: vLLM requires more VRAM but can handle larger contexts more efficiently
+- **Scaling**: vLLM scales better with batch size and context length, crucial for production
+- **First Token Latency**: Ollama often has faster time-to-first-token in smaller models
+- **CPU Utilization**: Ollama has efficient CPU execution with quantized models
+
+## Understanding vLLM
+
+vLLM is an open-source library for LLM inference that introduces several optimizations:
 
 ### Key Features of vLLM
 
 1. **PagedAttention**: A memory-efficient attention mechanism that manages KV cache (key-value pairs from previous tokens) using a paging system inspired by operating systems.
-
 2. **Continuous Batching**: Efficiently processes multiple requests concurrently, dramatically improving throughput.
-
 3. **Optimized CUDA Kernels**: Highly optimized implementations of key operations.
-
 4. **Tensor Parallelism**: Distributes large models across multiple GPUs.
 
 ### How vLLM Improves Performance
 
-- **Memory Efficiency**: By using PagedAttention, vLLM can better manage memory, allowing it to serve more concurrent requests with the same hardware.
+* **Memory Efficiency**: By using PagedAttention, vLLM can better manage memory, allowing it to serve more concurrent requests with the same hardware.
+* **Throughput**: The continuous batching approach enables processing multiple requests at different stages simultaneously, maximizing GPU utilization.
+* **Latency**: Optimized CUDA kernels and efficient memory management reduce the time to generate each token.
+
+## Advanced Customization
+
+### Custom Models
+
+- Add models to Ollama: `docker exec -it ollama ollama pull model_name`
+- Use custom GGUF models with Ollama: 
+  ```bash
+  docker cp your-model.gguf ollama:/tmp/
+  docker exec -it ollama ollama create mymodel -f /tmp/your-model.gguf
+  ```
+- Change vLLM model: Edit the MODEL_ID environment variable in docker-compose.yml
+
+### Hardware Configuration
+
+- Adjust GPU allocation between services by modifying the `deploy.resources` section
+- For multi-GPU setups, modify the vLLM container to use tensor parallelism:
+  ```yaml
+  environment:
+    - MODEL_ID=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    - TENSOR_PARALLEL_SIZE=2  # For 2 GPUs
+  ```
+
+### Benchmark Customization
+
+- Edit `src/run_benchmark.py` to add custom prompts or metrics
+- Modify the Grafana dashboards to display metrics relevant to your use case
+- Adjust the Prometheus scrape interval for more/less granular data
+
+## Troubleshooting
+
+- **Issue**: Grafana isn't showing metrics
+  - **Solution**: Check that Prometheus can reach the targets: http://localhost:9090/targets
   
-- **Throughput**: The continuous batching approach enables processing multiple requests at different stages simultaneously, maximizing GPU utilization.
+- **Issue**: GPU not detected by vLLM
+  - **Solution**: Verify NVIDIA drivers and Docker GPU support: `docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi`
 
-- **Latency**: Optimized CUDA kernels and efficient memory management reduce the time to generate each token.
+- **Issue**: Containers fail to start
+  - **Solution**: Check logs with `docker-compose logs service_name`
 
-## 🔄 Comparison with Ollama
+- **Issue**: Out of memory errors
+  - **Solution**: Use smaller models or increase swap space with `--memory-swap` in Docker
 
-Ollama is an easy-to-use tool for running LLMs locally, with excellent developer experience. This project helps you understand the performance trade-offs between:
-
-- **Ollama**: User-friendly, easy setup, good for general-purpose use
-- **vLLM**: Optimized for maximum performance, better for production environments or serving multiple users
-
-## 📚 Models
-
-By default, the benchmark uses the TinyLlama-1.1B-Chat model, but you can modify the scripts to test with other models.
-
-### Adding New Models
-
-#### For Ollama:
-1. Pull the model using Ollama's CLI:
-   ```bash
-   docker exec -it ollama ollama pull <model-name>
-   ```
-2. Update the `MODEL` variable in `src/ollama/setup.sh` or pass the model name to the benchmark script
-
-#### For vLLM:
-1. Update the environment variables in `config/vllm.Dockerfile`:
-   ```
-   ENV MODEL_PATH="/models/<model-name>"
-   ENV MODEL_ID="<hf-repo-id>/<model-name>"
-   ```
-2. Rebuild the vLLM container:
-   ```bash
-   docker-compose build vllm
-   docker-compose up -d vllm
-   ```
-
-### Supported Models
-
-The following models have been tested with this setup:
-- TinyLlama (1.1B parameters)
-- Llama 2 (7B parameters)
-- Mistral (7B parameters)
-
-Larger models (13B+) may require more memory and GPU resources.
-
-## 📂 Project Structure
+## Project Structure
 
 ```
-ollama-vllm-comparison/
-├── config/                  # Configuration files
-│   ├── benchmark.Dockerfile # Dockerfile for benchmark container
-│   ├── vllm.Dockerfile      # Dockerfile for vLLM container
-│   ├── prometheus.yml       # Prometheus configuration
-│   └── grafana/             # Grafana dashboards and datasources
-├── data/                    # Model and application data
-├── results/                 # Benchmark results
-├── scripts/                 # Helper scripts
-│   ├── run_benchmark.sh     # Script to run benchmarks
-│   └── setup_models.sh      # Script to setup models
-├── src/                     # Source code
-│   ├── monitoring/          # Prometheus metrics exporter
-│   │   └── prometheus_metrics.py # Metrics collection
-│   ├── ollama/              # Ollama-specific code
-│   │   └── setup.sh         # Ollama model setup script
-│   ├── vllm/                # vLLM-specific code
-│   │   └── server.py        # vLLM API server
-│   └── run_benchmark.py     # Main benchmark script
-└── docker-compose.yml       # Docker Compose configuration
+LLM_Ollama_vLLM/
+├── config/                      # Configuration files
+│   ├── benchmark.Dockerfile     # Dockerfile for benchmark container
+│   ├── vllm.Dockerfile          # Dockerfile for vLLM container
+│   ├── prometheus.yml           # Prometheus configuration
+│   └── grafana/                 # Grafana dashboards and datasources
+│       ├── dashboards/          # Dashboard definitions
+│       │   ├── dashboard.yml    # Dashboard provisioning config
+│       │   ├── home.json        # Home dashboard
+│       │   ├── llm_benchmark.json  # Ollama dashboard
+│       │   └── vllm_benchmark.json # vLLM dashboard
+│       └── datasources/         # Data source definitions
+│           └── datasource.yml   # Prometheus data source
+├── data/                        # Model and application data
+│   ├── ollama/                  # Ollama model storage
+│   └── vllm/                    # vLLM model storage
+├── results/                     # Benchmark results
+├── src/                         # Source code
+│   ├── monitoring/              # Prometheus metrics exporter
+│   │   ├── __init__.py          # Package initialization
+│   │   ├── prometheus_metrics.py # Metrics collection library
+│   │   └── metrics_exporter.py  # Metrics simulation and export
+│   └── run_benchmark.py         # Main benchmark script
+├── docker-compose.yml           # Docker Compose configuration (GPU)
+├── docker-compose.cpu.yml       # Docker Compose configuration (CPU-only)
+└── requirements.txt             # Python dependencies
 ```
 
-## 🔧 Troubleshooting
+## Contributing
 
-### Common Issues
-
-**Issue**: Docker containers fail to start
-**Solution**: Check GPU drivers and Docker GPU settings
-
-```bash
-# Verify NVIDIA drivers are properly installed
-nvidia-smi
-
-# Check Docker GPU support
-docker run --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
-```
-
-**Issue**: Models are not downloading
-**Solution**: Check network connectivity and model availability
-
-```bash
-# Check if Ollama service is running
-docker exec -it ollama ollama list
-
-# Check vLLM logs
-docker logs vllm
-```
-
-**Issue**: Metrics are not showing in Grafana
-**Solution**: Verify Prometheus is scraping the metrics
-
-```bash
-# Check Prometheus targets
-curl http://localhost:9090/api/v1/targets
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -231,51 +297,13 @@ Contributions are welcome! Feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
-## 📚 References & Resources
+## Acknowledgements
 
-### Core Technologies
-
-#### Ollama
-- [Ollama GitHub Repository](https://github.com/ollama/ollama)
-- [Ollama Documentation](https://ollama.ai/docs)
-- [Ollama Model Library](https://ollama.ai/library)
-- [Ollama API Reference](https://github.com/ollama/ollama/blob/main/docs/api.md)
-
-#### vLLM
-- [vLLM GitHub Repository](https://github.com/vllm-project/vllm)
-- [vLLM Documentation](https://vllm.readthedocs.io/)
-- [PagedAttention Paper](https://arxiv.org/abs/2309.06180)
-- [vLLM API Reference](https://vllm.readthedocs.io/en/latest/serving/openai_compatible_server.html)
-
-#### Monitoring Stack
-- [Prometheus Documentation](https://prometheus.io/docs/introduction/overview/)
-- [Grafana Documentation](https://grafana.com/docs/)
-- [Node Exporter Documentation](https://prometheus.io/docs/guides/node-exporter/)
-- [Prometheus Python Client](https://github.com/prometheus/client_python)
-
-#### Docker & Container Orchestration
-- [Docker Documentation](https://docs.docker.com/)
-- [Docker Compose Reference](https://docs.docker.com/compose/compose-file/)
-- [Docker GPU Support](https://docs.docker.com/config/containers/resource_constraints/#gpu)
-
-### LLM Models
-- [TinyLlama Repository](https://github.com/jzhang38/TinyLlama)
-- [Llama 2 Paper](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/)
-- [Mistral AI Documentation](https://docs.mistral.ai/)
-- [HuggingFace Model Hub](https://huggingface.co/models)
-
-### Visualization & Data Analysis
-- [Matplotlib Documentation](https://matplotlib.org/stable/index.html)
-- [Seaborn Documentation](https://seaborn.pydata.org/)
-- [Pandas Documentation](https://pandas.pydata.org/docs/)
-
-### Additional Resources
-- [LLM Inference Optimization Guide](https://huggingface.co/docs/transformers/main/en/perf_infer_gpu_one)
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
-- [Transformer Models: An Introduction and Catalog](https://arxiv.org/abs/2302.07730)
-- [Benchmarking Generation Throughput of LLMs](https://huggingface.co/blog/benchmark-llms)
-- [Efficient Memory Management for Large Language Model Serving](https://www.anyscale.com/blog/continuous-batching-llm-inference) 
+- [Ollama](https://github.com/ollama/ollama) for the local inference engine
+- [vLLM](https://github.com/vllm-project/vllm) for the high-performance inference
+- [Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/) for monitoring
+- [NVIDIA DCGM](https://developer.nvidia.com/dcgm) for GPU metrics 
